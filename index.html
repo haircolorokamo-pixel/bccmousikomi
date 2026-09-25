@@ -31,7 +31,7 @@
 
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
   .seminar-name { font-size: 17px; font-weight: 700; margin: 0 0 10px; line-height: 1.5; }
-  .meta { display: grid; grid-template-columns: 3.6em 1fr; gap: 6px 8px; font-size: 14px; line-height: 1.6; margin: 0; }
+  .meta { display: grid; grid-template-columns: 4.4em 1fr; gap: 6px 8px; font-size: 14px; line-height: 1.6; margin: 0; }
   .meta dt { color: var(--sub); }
   .meta dd { margin: 0; }
   .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--sub); margin-bottom: 8px; }
@@ -65,6 +65,13 @@
   .summary { font-size: 14px; }
   .summary .meta { grid-template-columns: 6.4em 1fr; }
   footer { text-align: center; font-size: 11px; color: var(--sub); margin-top: 22px; }
+  .fee-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 4px 0 16px; }
+  .fee-title { font-size: 12px; font-weight: 700; color: var(--sub); letter-spacing: .08em; margin: 0 0 8px; }
+  .fee-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; line-height: 1.9; font-variant-numeric: tabular-nums; }
+  .fee-row span:first-child { color: var(--sub); }
+  .fee-total { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; font-weight: 700; font-size: 17px; }
+  .fee-total span:first-child { color: var(--ink); }
+  .fee-note { font-size: 11px; color: var(--sub); margin: 8px 0 0; line-height: 1.6; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -97,6 +104,8 @@
           <dt>日時</dt><dd data-f="when"></dd>
           <dt>会場</dt><dd data-f="venue"></dd>
           <dt>懇親会</dt><dd data-f="party"></dd>
+          <dt data-f="feeLabel">講習費</dt><dd data-f="fee"></dd>
+          <dt data-f="partyFeeLabel">懇親会費</dt><dd data-f="partyFee"></dd>
         </dl>
       </div>
     </div>
@@ -123,6 +132,12 @@
       </div>
     </div>
     <p id="capacityHint" class="hint" style="margin:-8px 0 16px" hidden></p>
+
+    <div id="feeCard" class="fee-card" hidden>
+      <p class="fee-title">お支払い予定額</p>
+      <div id="feeRows"></div>
+      <p class="fee-note" id="feeNote"></p>
+    </div>
 
     <p id="formError" class="error" hidden></p>
     <button type="submit" id="submitBtn" class="btn">申し込む</button>
@@ -158,8 +173,8 @@
    設定（ここだけ書き換えてください）
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2011747330-BQph4fkB',          // 例: 2000000000-AbCdEfGh
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbwXppMbK1CgzLEtnNlPilym1kFTTNx1PcG-QXhhTgI2aVNuqNzOTU4DZZFBpGIvsdz1uQ/exec',   // 例: https://script.google.com/macros/s/xxxx/exec
+  LIFF_ID: '2011747330-BQph4fkB',
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwXppMbK1CgzLEtnNlPilym1kFTTNx1PcG-QXhhTgI2aVNuqNzOTU4DZZFBpGIvsdz1uQ/exec',
   COUNT_MIN: 1,  COUNT_MAX: 20,     // 講習参加人数
   PARTY_MIN: 0,  PARTY_MAX: 20,     // 懇親会参加人数（0 = 参加しない）
 };
@@ -167,11 +182,11 @@ const CONFIG = {
 /* デモ用データ（?demo=multi / ?demo=single で表示確認できます） */
 const DEMO_SEMINARS = [
   { id: 'S001', name: 'BCC カラー講習「透明感ベージュの作り方」', date: '2026-11-10', time: '13:00', endTime: '17:00',
-    venue: 'BCC 本部スタジオ', address: '大阪府大阪市〇〇区〇〇 1-2-3', party: true, remaining: 18 },
+    venue: 'BCC 本部スタジオ', address: '大阪府大阪市〇〇区〇〇 1-2-3', party: true, remaining: 18, fee1: 11000, fee2: 5500, partyFee: 5000 },
   { id: 'S002', name: 'BCC カット講習「ショートボブ基礎」', date: '2026-12-08', time: '10:00', endTime: '15:00',
-    venue: 'BCC 本部スタジオ', address: '大阪府大阪市〇〇区〇〇 1-2-3', party: false, remaining: 6 },
+    venue: 'BCC 本部スタジオ', address: '大阪府大阪市〇〇区〇〇 1-2-3', party: false, remaining: 6, fee1: 8800, fee2: null, partyFee: null },
   { id: 'S003', name: 'BCC 経営セミナー「単価アップの仕組み化」', date: '2027-01-19', time: '14:00', endTime: '',
-    venue: 'オンライン（Zoom）', address: '', party: true, remaining: null },
+    venue: 'オンライン（Zoom）', address: '', party: true, remaining: null, fee1: 5500, fee2: null, partyFee: 3000 },
 ];
 
 /* ============================================================ */
@@ -212,8 +227,51 @@ function currentSeminar() {
   return seminars.find(s => s.id === $('seminar').value) || null;
 }
 
+const yen = (n) => '¥' + Number(n).toLocaleString('ja-JP');
+function feeText(s) {
+  if (s.fee1 == null) return '';
+  if (s.fee2 != null && s.fee2 !== s.fee1) return `1人目 ${yen(s.fee1)}／2人目以降 ${yen(s.fee2)}（お一人あたり）`;
+  return s.fee1 === 0 ? '無料' : `お一人 ${yen(s.fee1)}`;
+}
+function calcFee(s, count, party) {
+  const lesson = s.fee1 == null ? null : s.fee1 + (count - 1) * (s.fee2 != null ? s.fee2 : s.fee1);
+  const partyFee = (s.party && s.partyFee != null) ? s.partyFee * party : null;
+  const total = (lesson == null && partyFee == null) ? null : (lesson || 0) + (partyFee || 0);
+  return { lesson, party: partyFee, total };
+}
+function updateFee() {
+  const s = currentSeminar();
+  const card = $('feeCard');
+  if (!s || (s.fee1 == null && (s.partyFee == null || !s.party))) { card.hidden = true; return; }
+  const count = Number($('count').value) || 1;
+  const party = s.party ? Number($('party').value) || 0 : 0;
+  const f = calcFee(s, count, party);
+  const rows = [];
+  if (f.lesson != null) {
+    const second = s.fee2 != null ? s.fee2 : s.fee1;
+    if (count > 1 && second !== s.fee1) {
+      rows.push([`講習費 1人目`, yen(s.fee1)]);
+      rows.push([`講習費 2人目以降 ${yen(second)}×${count - 1}名`, yen(second * (count - 1))]);
+    } else {
+      rows.push([count > 1 ? `講習費 ${yen(s.fee1)}×${count}名` : '講習費', yen(f.lesson)]);
+    }
+  }
+  if (f.party != null && party > 0) rows.push([`懇親会費 ${yen(s.partyFee)}×${party}名`, yen(f.party)]);
+  $('feeRows').innerHTML = rows.map(([k, v]) => `<div class="fee-row"><span>${esc(k)}</span><span>${v}</span></div>`).join('') +
+    `<div class="fee-row fee-total"><span>合計</span><span>${yen(f.total)}</span></div>`;
+  $('feeNote').textContent = (s.fee2 != null && s.fee2 !== s.fee1) ? '同じサロンから2名以上でのご参加は、2人目以降の講習費がお得になります。' : '';
+  $('feeNote').hidden = !$('feeNote').textContent;
+  card.hidden = false;
+}
+
 function renderSeminarBox(box, s) {
   box.querySelector('[data-f="when"]').textContent = fmtWhen(s);
+  const ft = feeText(s);
+  box.querySelector('[data-f="fee"]').textContent = ft;
+  box.querySelector('[data-f="fee"]').hidden = box.querySelector('[data-f="feeLabel"]').hidden = !ft;
+  const pf = (s.party && s.partyFee != null) ? (s.partyFee === 0 ? '無料' : `お一人 ${yen(s.partyFee)}`) : '';
+  box.querySelector('[data-f="partyFee"]').textContent = pf;
+  box.querySelector('[data-f="partyFee"]').hidden = box.querySelector('[data-f="partyFeeLabel"]').hidden = !pf;
   box.querySelector('[data-f="venue"]').innerHTML = fmtVenue(s);
   box.querySelector('[data-f="party"]').textContent = s.party ? 'あり' : 'なし';
   const nm = box.querySelector('[data-f="name"]');
@@ -233,6 +291,7 @@ function onSeminarChange() {
   fillOptions($('count'), CONFIG.COUNT_MIN, max, '名');
   $('capacityHint').hidden = !(s && s.remaining != null && s.remaining <= 10);
   if (s && s.remaining != null) $('capacityHint').textContent = `残り${s.remaining}席です。`;
+  updateFee();
 }
 
 function renderForm() {
@@ -248,11 +307,36 @@ function renderForm() {
   const preset = params.get('seminar');
   if (preset && seminars.some(s => s.id === preset)) sel.value = preset;
   sel.onchange = onSeminarChange;
+  $('count').onchange = updateFee;
+  $('party').onchange = updateFee;
 
   fillOptions($('party'), CONFIG.PARTY_MIN, CONFIG.PARTY_MAX, '名', '参加しない');
   onSeminarChange();
+  restoreDraft();
   if (profile.displayName && !$('name').value) $('name').placeholder = `例）${profile.displayName}`;
   show('form');
+}
+
+const DRAFT_KEY = 'bcc_seminar_draft';
+function saveDraft() {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+      seminar: $('seminar').value, name: $('name').value, salon: $('salon').value,
+      count: $('count').value, party: $('party').value,
+    }));
+  } catch (_) {}
+}
+function restoreDraft() {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
+    if (!d) return;
+    sessionStorage.removeItem(DRAFT_KEY);
+    if (d.seminar && seminars.some(s => s.id === d.seminar)) { $('seminar').value = d.seminar; onSeminarChange(); }
+    $('name').value = d.name || ''; $('salon').value = d.salon || '';
+    if (d.count) $('count').value = d.count;
+    if (d.party) $('party').value = d.party;
+    updateFee();
+  } catch (_) {}
 }
 
 function validate() {
@@ -290,6 +374,14 @@ async function submit(e) {
       await new Promise(r => setTimeout(r, 500));
       res = { ok: true, updated: false };
     } else {
+      // ログインの期限切れなら、入力内容を保存して自動で再ログイン
+      const dec = liff.getDecodedIDToken();
+      if (!dec || dec.exp * 1000 < Date.now() + 60000) {
+        saveDraft();
+        liff.logout();
+        liff.login({ redirectUri: location.href });
+        return;
+      }
       payload.idToken = liff.getIDToken();
       const r = await fetch(CONFIG.GAS_URL, {
         method: 'POST',
@@ -315,6 +407,8 @@ function renderDone(s, p, updated) {
     ['お名前', esc(p.name)], ['サロン名', esc(p.salon)], ['講習参加', `${p.count}名`],
   ];
   if (s.party) rows.push(['懇親会参加', p.party ? `${p.party}名` : '参加しない']);
+  const f = calcFee(s, p.count, p.party);
+  if (f.total != null) rows.push(['お支払い合計', `<strong>${yen(f.total)}</strong>`]);
   $('doneSummary').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   show('done');
 }
