@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>講習 参加申し込み | BCC</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --bg: #f6f4f1;
+    --card: #ffffff;
+    --ink: #1f1d1b;
+    --sub: #6b6560;
+    --line: #e4dfd9;
+    --accent: #1f1d1b;
+    --accent-ink: #ffffff;
+    --ok: #06c755;
+    --warn-bg: #fff6e5;
+    --warn-ink: #8a5a00;
+    --err: #c62828;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 28px 16px calc(40px + env(safe-area-inset-bottom)); }
+  header { text-align: center; margin-bottom: 22px; }
+  .brand { letter-spacing: .32em; font-size: 13px; font-weight: 700; color: var(--sub); margin: 0 0 6px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: .04em; }
+  .lead { font-size: 13px; color: var(--sub); margin: 8px 0 0; line-height: 1.7; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  .seminar-name { font-size: 17px; font-weight: 700; margin: 0 0 10px; line-height: 1.5; }
+  .meta { display: grid; grid-template-columns: 3.6em 1fr; gap: 6px 8px; font-size: 14px; line-height: 1.6; margin: 0; }
+  .meta dt { color: var(--sub); }
+  .meta dd { margin: 0; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--sub); margin-bottom: 8px; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .req { font-size: 11px; color: #fff; background: var(--err); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; font-weight: 700; }
+  .hint { font-size: 12px; color: var(--sub); margin-top: 6px; line-height: 1.6; }
+  input[type=text], select {
+    width: 100%; font-size: 16px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px;
+    background: #fff; color: var(--ink); appearance: none; -webkit-appearance: none; font-family: inherit; }
+  select { background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%), linear-gradient(135deg, var(--sub) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 40px; }
+  input:focus, select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .invalid { border-color: var(--err) !important; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700;
+    background: var(--accent); color: var(--accent-ink); font-family: inherit; cursor: pointer; letter-spacing: .06em; }
+  .btn[disabled] { opacity: .5; }
+  .btn.line { background: var(--ok); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); margin-top: 10px; }
+
+  .notice { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.7; margin-bottom: 14px; }
+  .error { color: var(--err); font-size: 13px; margin: 0 0 12px; line-height: 1.6; }
+  .center { text-align: center; }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--ink); border-radius: 50%; margin: 40px auto 12px; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .check { width: 56px; height: 56px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 28px; margin: 8px auto 14px; }
+  .done-title { font-size: 19px; font-weight: 700; margin: 0 0 6px; }
+  .summary { font-size: 14px; }
+  .summary .meta { grid-template-columns: 6.4em 1fr; }
+  footer { text-align: center; font-size: 11px; color: var(--sub); margin-top: 22px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <p class="brand">BCC</p>
+    <h1>講習 参加申し込み</h1>
+    <p class="lead">必要事項をご入力のうえ「申し込む」を押してください。<br>開催前にこのLINEからご案内をお送りします。</p>
+  </header>
+
+  <!-- 読み込み中 -->
+  <section id="loading" class="center">
+    <div class="spinner"></div>
+    <p class="hint">読み込み中…</p>
+  </section>
+
+  <!-- 申込フォーム -->
+  <form id="form" novalidate hidden>
+    <div id="friendNotice" class="notice" hidden>
+      BCC公式LINEが友だち追加されていません。講習前のご案内をお届けするため、友だち追加をお願いします。
+    </div>
+
+    <!-- 講習選択：プルダウン -->
+    <div id="seminarSelectWrap" class="field">
+      <label for="seminar">参加する講習<span class="req">必須</span></label>
+      <select id="seminar" name="seminar"></select>
+      <div id="seminarDetail" class="card" style="margin-top:10px" hidden>
+        <dl class="meta">
+          <dt>日時</dt><dd data-f="when"></dd>
+          <dt>会場</dt><dd data-f="venue"></dd>
+          <dt>懇親会</dt><dd data-f="party"></dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="name">お名前<span class="req">必須</span></label>
+      <input type="text" id="name" name="name" autocomplete="name" placeholder="例）山田 花子" maxlength="40">
+      <p class="hint">代表者さまのお名前をご入力ください。</p>
+    </div>
+
+    <div class="field">
+      <label for="salon">サロン名<span class="req">必須</span></label>
+      <input type="text" id="salon" name="salon" autocomplete="organization" placeholder="例）hair salon BCC" maxlength="60">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="count">講習参加人数<span class="req">必須</span></label>
+        <select id="count" name="count"></select>
+      </div>
+      <div class="field" id="partyField">
+        <label for="party">懇親会参加人数<span class="req">必須</span></label>
+        <select id="party" name="party"></select>
+      </div>
+    </div>
+    <p id="capacityHint" class="hint" style="margin:-8px 0 16px" hidden></p>
+
+    <p id="formError" class="error" hidden></p>
+    <button type="submit" id="submitBtn" class="btn">申し込む</button>
+  </form>
+
+  <!-- 完了 -->
+  <section id="done" hidden>
+    <div class="card center">
+      <div class="check">✓</div>
+      <p class="done-title" id="doneTitle">お申し込みを受け付けました</p>
+      <p class="hint">受付内容をLINEにもお送りしました。<br>開催7日前と前日にご案内をお届けします。</p>
+    </div>
+    <div class="card summary">
+      <dl class="meta" id="doneSummary"></dl>
+    </div>
+    <p class="hint center">人数の変更は、もう一度このページから送信すると上書きされます。<br>キャンセルはBCC公式LINEのトークでご連絡ください。</p>
+    <button type="button" class="btn line" id="closeBtn">LINEに戻る</button>
+  </section>
+
+  <!-- エラー / 受付なし -->
+  <section id="fatal" hidden>
+    <div class="card center">
+      <p class="done-title" id="fatalTitle">ページを表示できません</p>
+      <p class="hint" id="fatalMsg"></p>
+    </div>
+  </section>
+
+  <footer>BCC</footer>
+</main>
+
+<script>
+/* ============================================================
+   設定（ここだけ書き換えてください）
+   ============================================================ */
+const CONFIG = {
+  LIFF_ID: '2009026023',          // 例: 2000000000-AbCdEfGh
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwXppMbK1CgzLEtnNlPilym1kFTTNx1PcG-QXhhTgI2aVNuqNzOTU4DZZFBpGIvsdz1uQ/exec',   // 例: https://script.google.com/macros/s/xxxx/exec
+  COUNT_MIN: 1,  COUNT_MAX: 20,     // 講習参加人数
+  PARTY_MIN: 0,  PARTY_MAX: 20,     // 懇親会参加人数（0 = 参加しない）
+};
+
+/* デモ用データ（?demo=multi / ?demo=single で表示確認できます） */
+const DEMO_SEMINARS = [
+  { id: 'S001', name: 'BCC カラー講習「透明感ベージュの作り方」', date: '2026-11-10', time: '13:00', endTime: '17:00',
+    venue: 'BCC 本部スタジオ', address: '大阪府大阪市〇〇区〇〇 1-2-3', party: true, remaining: 18 },
+  { id: 'S002', name: 'BCC カット講習「ショートボブ基礎」', date: '2026-12-08', time: '10:00', endTime: '15:00',
+    venue: 'BCC 本部スタジオ', address: '大阪府大阪市〇〇区〇〇 1-2-3', party: false, remaining: 6 },
+  { id: 'S003', name: 'BCC 経営セミナー「単価アップの仕組み化」', date: '2027-01-19', time: '14:00', endTime: '',
+    venue: 'オンライン（Zoom）', address: '', party: true, remaining: null },
+];
+
+/* ============================================================ */
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const DEMO = params.get('demo'); // 'single' | 'multi' | null
+let seminars = [];
+let profile = { displayName: '' };
+
+const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+function fmtWhen(s) {
+  const [y, m, d] = s.date.split('-').map(Number);
+  const w = WEEK[new Date(y, m - 1, d).getDay()];
+  return `${y}年${m}月${d}日(${w}) ${s.time}${s.endTime ? '〜' + s.endTime : '〜'}`;
+}
+function fmtVenue(s) { return s.address ? `${esc(s.venue)}<br><span class="hint">${esc(s.address)}</span>` : esc(s.venue); }
+function esc(t) { return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function show(id) {
+  ['loading', 'form', 'done', 'fatal'].forEach(x => $(x).hidden = (x !== id));
+  window.scrollTo(0, 0);
+}
+function fatal(title, msg) { $('fatalTitle').textContent = title; $('fatalMsg').textContent = msg; show('fatal'); }
+
+function fillOptions(sel, min, max, suffix, zeroLabel) {
+  const cur = sel.value;
+  sel.innerHTML = '';
+  for (let i = min; i <= max; i++) {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = (i === 0 && zeroLabel) ? zeroLabel : `${i}${suffix}`;
+    sel.appendChild(o);
+  }
+  if (cur !== '' && Number(cur) >= min && Number(cur) <= max) sel.value = cur;
+}
+
+function currentSeminar() {
+  return seminars.find(s => s.id === $('seminar').value) || null;
+}
+
+function renderSeminarBox(box, s) {
+  box.querySelector('[data-f="when"]').textContent = fmtWhen(s);
+  box.querySelector('[data-f="venue"]').innerHTML = fmtVenue(s);
+  box.querySelector('[data-f="party"]').textContent = s.party ? 'あり' : 'なし';
+  const nm = box.querySelector('[data-f="name"]');
+  if (nm) nm.textContent = s.name;
+}
+
+function onSeminarChange() {
+  const s = currentSeminar();
+  $('seminarDetail').hidden = !s;
+  if (s) renderSeminarBox($('seminarDetail'), s);
+  // 懇親会なしの講習は懇親会欄を隠す
+  const hasParty = s ? s.party : true;
+  $('partyField').hidden = !hasParty;
+  // 残席に合わせて講習人数の上限を調整
+  let max = CONFIG.COUNT_MAX;
+  if (s && s.remaining != null) max = Math.max(CONFIG.COUNT_MIN, Math.min(max, s.remaining));
+  fillOptions($('count'), CONFIG.COUNT_MIN, max, '名');
+  $('capacityHint').hidden = !(s && s.remaining != null && s.remaining <= 10);
+  if (s && s.remaining != null) $('capacityHint').textContent = `残り${s.remaining}席です。`;
+}
+
+function renderForm() {
+  if (!seminars.length) return fatal('受付中の講習はありません', '現在お申し込みを受け付けている講習はありません。次回のご案内をお待ちください。');
+
+  const sel = $('seminar');
+  sel.innerHTML = (seminars.length > 1 ? '<option value="">選択してください</option>' : '') +
+    seminars.map(s => {
+      const [, m, d] = s.date.split('-').map(Number);
+      return `<option value="${esc(s.id)}">${m}/${d} ${esc(s.name)}</option>`;
+    }).join('');
+  // LIFF URL に ?seminar=S001 を付けると、その講習を選択済みの状態で開く
+  const preset = params.get('seminar');
+  if (preset && seminars.some(s => s.id === preset)) sel.value = preset;
+  sel.onchange = onSeminarChange;
+
+  fillOptions($('party'), CONFIG.PARTY_MIN, CONFIG.PARTY_MAX, '名', '参加しない');
+  onSeminarChange();
+  if (profile.displayName && !$('name').value) $('name').placeholder = `例）${profile.displayName}`;
+  show('form');
+}
+
+function validate() {
+  let ok = true;
+  const need = [$('seminar'), $('name'), $('salon')];
+  need.forEach(el => {
+    const bad = !String(el.value).trim();
+    el.classList.toggle('invalid', bad);
+    if (bad) ok = false;
+  });
+  return ok;
+}
+
+async function submit(e) {
+  e.preventDefault();
+  $('formError').hidden = true;
+  if (!validate()) {
+    $('formError').textContent = '未入力の項目があります。';
+    $('formError').hidden = false;
+    return;
+  }
+  const s = currentSeminar();
+  const payload = {
+    seminarId: s.id,
+    name: $('name').value.trim(),
+    salon: $('salon').value.trim(),
+    count: Number($('count').value),
+    party: s.party ? Number($('party').value) : 0,
+  };
+  const btn = $('submitBtn');
+  btn.disabled = true; btn.textContent = '送信中…';
+  try {
+    let res;
+    if (DEMO) {
+      await new Promise(r => setTimeout(r, 500));
+      res = { ok: true, updated: false };
+    } else {
+      payload.idToken = liff.getIDToken();
+      const r = await fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // プリフライト回避
+        body: JSON.stringify({ action: 'register', ...payload }),
+      });
+      res = await r.json();
+    }
+    if (!res.ok) throw new Error(res.message || '送信に失敗しました。');
+    renderDone(s, payload, res.updated);
+  } catch (err) {
+    $('formError').textContent = err.message || '送信に失敗しました。時間をおいて再度お試しください。';
+    $('formError').hidden = false;
+  } finally {
+    btn.disabled = false; btn.textContent = '申し込む';
+  }
+}
+
+function renderDone(s, p, updated) {
+  $('doneTitle').textContent = updated ? '申し込み内容を更新しました' : 'お申し込みを受け付けました';
+  const rows = [
+    ['講習', esc(s.name)], ['日時', esc(fmtWhen(s))], ['会場', fmtVenue(s)],
+    ['お名前', esc(p.name)], ['サロン名', esc(p.salon)], ['講習参加', `${p.count}名`],
+  ];
+  if (s.party) rows.push(['懇親会参加', p.party ? `${p.party}名` : '参加しない']);
+  $('doneSummary').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  show('done');
+}
+
+async function loadSeminars() {
+  if (DEMO) return DEMO === 'single' ? [DEMO_SEMINARS[0]] : DEMO_SEMINARS;
+  const r = await fetch(`${CONFIG.GAS_URL}?action=seminars`);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.message || '講習情報を取得できませんでした。');
+  return j.seminars;
+}
+
+async function main() {
+  $('form').addEventListener('submit', submit);
+  $('closeBtn').addEventListener('click', () => {
+    if (!DEMO && liff.isInClient()) liff.closeWindow(); else window.close();
+  });
+  try {
+    if (!DEMO) {
+      await liff.init({ liffId: CONFIG.LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+      profile = await liff.getProfile().catch(() => profile);
+      const fr = await liff.getFriendship().catch(() => ({ friendFlag: true }));
+      $('friendNotice').hidden = !!fr.friendFlag;
+    }
+    seminars = await loadSeminars();
+    renderForm();
+  } catch (err) {
+    console.error(err);
+    fatal('ページを表示できません', 'LINEアプリから開き直してください。改善しない場合はBCC公式LINEまでご連絡ください。');
+  }
+}
+main();
+</script>
+</body>
+</html>
